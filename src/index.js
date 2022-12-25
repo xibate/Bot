@@ -1,60 +1,34 @@
-const { REST } = require("@discordjs/rest"); // Define REST.
-const { Routes } = require("discord-api-types/v9"); // Define Routes.
-const fs = require("fs"); // Define fs (file system).
-const { Client, Intents, Collection } = require("discord.js"); // Define Client, Intents, and Collection.
-const client = new Client({
-  intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES],
-}); // Connect to our discord bot.
-const commands = new Collection(); // Where the bot (slash) commands will be stored.
-const commandarray = []; // Array to store commands for sending to the REST API.
-const token = process.env.DISCORD_TOKEN; // Token from Railway Env Variable.
-// Execute code when the "ready" client event is triggered.
-client.once("ready", () => {
-  const commandFiles = fs
-    .readdirSync("src/Commands")
-    .filter(file => file.endsWith(".js")); // Get and filter all the files in the "Commands" Folder.
+const Discord = require('discord.js');
+const client = new Discord.Client();
 
-  // Loop through the command files
-  for (const file of commandFiles) {
-    const command = require(`./Commands/${file}`); // Get and define the command file.
-    commands.set(command.data.name, command); // Set the command name and file for handler to use.
-    commandarray.push(command.data.toJSON()); // Push the command data to an array (for sending to the API).
-  }
-
-  const rest = new REST({ version: "9" }).setToken(token); // Define "rest" for use in registering commands
-  // Register slash commands.
-  ;(async () => {
-    try {
-      console.log("Started refreshing application (/) commands.");
-
-      await rest.put(Routes.applicationCommands(client.user.id), {
-        body: commandarray,
-      });
-
-      console.log("Successfully reloaded application (/) commands.");
-    } catch (error) {
-      console.error(error);
-    }
-  })();
+client.on('ready', () => {
   console.log(`Logged in as ${client.user.tag}!`);
 });
-// Command handler.
-client.on("interactionCreate", async interaction => {
-  if (!interaction.isCommand()) return;
 
-  const command = commands.get(interaction.commandName);
+client.on('message', message => {
+  if (message.content === '!poll') {
+    // Create the poll
+    const poll = new Discord.MessageEmbed()
+      .setTitle('Poll')
+      .setDescription('This is a poll')
+      .addField('Option 1', '1️⃣')
+      .addField('Option 2', '2️⃣')
+      .addField('Option 3', '3️⃣');
 
-  if (!command) return;
+    // Send the poll
+    message.channel.send(poll).then(sentMessage => {
+      // Add the reaction collector
+      const filter = (reaction, user) => {
+        return ['1️⃣', '2️⃣', '3️⃣'].includes(reaction.emoji.name) && user.id !== client.user.id;
+      };
+      const collector = sentMessage.createReactionCollector(filter, { time: 15000 });
+      collector.on('collect', r => console.log(`Collected ${r.emoji.name}`));
+      collector.on('end', collected => console.log(`Collected ${collected.size} items`));
 
-  try {
-    await command.execute(interaction, client);
-  } catch (error) {
-    console.error(error);
-    return interaction.reply({
-      content: "There was an error while executing this command!",
-      ephemeral: true,
+      // Add the reactions
+      ['1️⃣', '2️⃣', '3️⃣'].forEach(emoji => sentMessage.react(emoji));
     });
   }
 });
 
-client.login(token); // Login to the bot client via the defined "token" string.
+client.login('MTA1NjY2MTU5MTU3MzE0MzYwMw.G4UsBh.wPyY-wIbO0zMQZX3E1WSE77HOrlgNncyFVBfZ4');
